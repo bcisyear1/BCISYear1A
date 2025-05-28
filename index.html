@@ -10,36 +10,35 @@
       font-weight: bold;
       text-align: center;
       padding: 20px;
-      overflow: hidden;
-      display: flex; /* Use flexbox for body to center content vertically */
+      overflow: hidden; /* Hide overflow to prevent scrollbars from flying letters */
+      display: flex;
       flex-direction: column;
-      align-items: center; /* Center horizontally */
-      min-height: 100vh; /* Ensure body takes full viewport height */
+      align-items: center;
+      min-height: 100vh;
       justify-content: flex-start; /* Align content to the top */
     }
 
     h1 {
       color: #444;
       font-weight: bold;
-      margin-bottom: 20px; /* Space below the title */
+      margin-bottom: 20px;
     }
 
-    /* New container for the game layout */
     #main-game-container {
       display: flex;
-      align-items: flex-start; /* Align items to the top */
-      gap: 30px; /* Space between grid and word lists */
-      max-width: 1200px; /* Optional: limit overall width */
+      align-items: flex-start;
+      gap: 30px;
+      max-width: 1200px;
       width: 100%;
-      justify-content: center; /* Center the entire game block */
+      justify-content: center;
     }
 
     #grid {
       display: grid;
       grid-template-columns: repeat(12, 40px);
       gap: 2px;
-      border: 1px solid #aaa; /* Add a subtle border for the grid */
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Add a subtle shadow */
+      border: 1px solid #aaa;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
 
     .cell {
@@ -54,6 +53,8 @@
       align-items: center;
       cursor: pointer;
       user-select: none;
+      /* Add transition for smooth opacity change when cells hide */
+      transition: opacity 0.3s ease-out;
     }
 
     .selected {
@@ -66,19 +67,18 @@
       color: #000;
     }
 
-    /* Styles for the individual word list columns */
     .word-column {
       display: flex;
       flex-direction: column;
-      align-items: flex-start; /* Align words to the left within their column */
+      align-items: flex-start;
       padding: 10px;
-      min-width: 120px; /* Ensure columns have some width */
+      min-width: 120px;
     }
 
     .word-column span {
-      font-size: 24px; /* Bigger font size for words */
-      padding: 5px 0; /* Add some vertical padding */
-      white-space: nowrap; /* Prevent words from wrapping */
+      font-size: 24px;
+      padding: 5px 0;
+      white-space: nowrap;
     }
 
     .done {
@@ -86,14 +86,33 @@
       color: gray;
     }
 
-    /* Flying letter styles */
+    /* Flying letter styles - reused and modified for end game */
     .flying-letter {
       position: absolute;
-      font-size: 24px;
+      font-size: 24px; /* Default size, can be overridden */
       font-weight: bold;
       animation: fly 2s ease-out forwards;
       pointer-events: none;
       z-index: 1000;
+    }
+
+    /* Congratulation text styles */
+    #congrats-container {
+      font-size: 80px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+      display: flex;
+      flex-wrap: wrap; /* Allow "Congratulations!!" to wrap if needed */
+      justify-content: center;
+      margin-top: 50px; /* Add some space from the top if body is flex-start */
+    }
+
+    #congrats-container span {
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Base transition */
+      display: inline-block; /* Essential for transform on spaces and individual letters */
     }
 
     @keyframes fly {
@@ -125,7 +144,6 @@
   const gridSize = 12;
   const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(""));
 
-  // Get a reference to the audio element
   const yaySound = document.getElementById("yaySound");
 
   function canPlaceWord(word, row, col, direction) {
@@ -262,8 +280,7 @@
             c.classList.add("found");
         });
 
-        // Play the "yay" sound!
-        yaySound.currentTime = 0; // Rewind to start in case it's playing
+        yaySound.currentTime = 0;
         yaySound.play();
 
         launchFlyingLetters(selectedCells);
@@ -274,7 +291,8 @@
         updateWordList();
 
         if (foundWords.length === words.length) {
-            setTimeout(() => alert("🎉 You found all the words! 🎉"), 100);
+            // All words found, initiate end game sequence
+            setTimeout(() => handleGameEnd(), 500); // Give a slight pause after last word animation
         }
     }
     const longestWordLength = Math.max(...words.map(w => w.length));
@@ -294,7 +312,6 @@
 
     const middleIndex = Math.ceil(words.length / 2);
 
-    // Populate left column
     for (let i = 0; i < middleIndex; i++) {
         const word = words[i];
         const span = document.createElement("span");
@@ -303,7 +320,6 @@
         leftListContainer.appendChild(span);
     }
 
-    // Populate right column
     for (let i = middleIndex; i < words.length; i++) {
         const word = words[i];
         const span = document.createElement("span");
@@ -322,8 +338,12 @@
       flying.textContent = letter;
 
       const rect = cell.getBoundingClientRect();
-      flying.style.left = rect.left + "px";
-      flying.style.top = rect.top + "px";
+      const scrollX = window.scrollX || document.documentElement.scrollLeft;
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+
+      flying.style.left = (rect.left + scrollX) + "px";
+      flying.style.top = (rect.top + scrollY) + "px";
+      flying.style.color = getComputedStyle(cell).color; // Keep original color
 
       const dx = Math.random() * 400 - 200;
       const dy = Math.random() * 300 - 150;
@@ -368,6 +388,92 @@
         }
     }
     return true;
+  }
+
+  // New function to handle the end of the game
+  function handleGameEnd() {
+    const allGridCells = document.querySelectorAll('#grid .cell');
+    const delayBetweenLetters = 10; // milliseconds
+    const animationDuration = 2000; // milliseconds, matches CSS animation duration
+
+    // Phase 1: Make all grid letters fly away
+    allGridCells.forEach((cell, index) => {
+        // Only animate visible letters
+        if (cell.textContent.trim() !== '') {
+            setTimeout(() => {
+                const letter = cell.textContent;
+                const flying = document.createElement("div");
+                flying.className = "flying-letter";
+                flying.textContent = letter;
+
+                const rect = cell.getBoundingClientRect();
+                const scrollX = window.scrollX || document.documentElement.scrollLeft;
+                const scrollY = window.scrollY || document.documentElement.scrollTop;
+
+                flying.style.left = (rect.left + scrollX) + "px";
+                flying.style.top = (rect.top + scrollY) + "px";
+                flying.style.color = getComputedStyle(cell).color;
+                flying.style.fontSize = getComputedStyle(cell).fontSize; // Maintain cell's font size
+
+                // Make them fly off-screen more randomly
+                const dx = (Math.random() - 0.5) * window.innerWidth * 2;
+                const dy = (Math.random() - 0.5) * window.innerHeight * 2;
+                flying.style.setProperty('--dx', `${dx}px`);
+                flying.style.setProperty('--dy', `${dy}px`);
+                flying.style.animationDuration = `${animationDuration / 1000}s`;
+                flying.style.opacity = 1; // Start opaque
+
+                document.body.appendChild(flying);
+
+                // Hide the original cell immediately for a cleaner transition
+                cell.style.opacity = '0';
+
+                setTimeout(() => flying.remove(), animationDuration);
+            }, index * delayBetweenLetters);
+        } else {
+            // If cell is empty, just hide it
+            setTimeout(() => {
+                cell.style.opacity = '0';
+            }, index * delayBetweenLetters);
+        }
+    });
+
+    // Calculate when the "Congratulations!!" should appear after all letters have flown away
+    const totalFlyAwayTime = (allGridCells.length * delayBetweenLetters) + animationDuration + 200; // Add a small buffer
+
+    setTimeout(() => {
+        // Clear all existing game content
+        document.body.innerHTML = '';
+        document.body.style.display = 'flex';
+        document.body.style.flexDirection = 'column';
+        document.body.style.justifyContent = 'center'; /* Center for the final message */
+        document.body.style.alignItems = 'center';
+        document.body.style.padding = '0'; /* Reset padding */
+
+        // Create the "Congratulations!!" message
+        const congratulationsText = "Congratulations! You are the CHOSEN KNIGHT";
+        const congratsContainer = document.createElement('div');
+        congratsContainer.id = 'congrats-container';
+        document.body.appendChild(congratsContainer);
+
+        // Animate each letter of "Congratulations!!"
+        congratulationsText.split('').forEach((char, index) => {
+            const span = document.createElement('span');
+            span.textContent = char === ' ' ? '\u00A0' : char; // Use non-breaking space for actual spaces
+            congratsContainer.appendChild(span);
+
+            // Apply animation delay for each letter
+            const letterDelay = index * 80; // milliseconds delay per letter
+            span.style.transitionDelay = `${letterDelay / 1000}s`;
+
+            // Trigger the animation by changing properties after a slight timeout
+            setTimeout(() => {
+                span.style.opacity = '1';
+                span.style.transform = 'scale(1)';
+            }, 50); // Small initial delay to ensure CSS transitions are active
+        });
+
+    }, totalFlyAwayTime);
   }
 
   // Initialize the game
