@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Year 1B Bcis Students</title>
+  <title>Word Search Game</title>
   <style>
     body {
       background: linear-gradient(to right, #fceabb, #f8b500);
@@ -10,35 +10,20 @@
       font-weight: bold;
       text-align: center;
       padding: 20px;
-      overflow: hidden; /* Hide overflow to prevent scrollbars from flying letters */
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      justify-content: flex-start; /* Align content to the top */
+      overflow: hidden;
     }
 
     h1 {
       color: #444;
       font-weight: bold;
-      margin-bottom: 20px;
-    }
-
-    #main-game-container {
-      display: flex;
-      align-items: flex-start;
-      gap: 30px;
-      max-width: 1200px;
-      width: 100%;
-      justify-content: center;
     }
 
     #grid {
       display: grid;
       grid-template-columns: repeat(12, 40px);
       gap: 2px;
-      border: 1px solid #aaa;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      justify-content: center;
+      margin-top: 20px;
     }
 
     .cell {
@@ -53,8 +38,6 @@
       align-items: center;
       cursor: pointer;
       user-select: none;
-      /* Add transition for smooth opacity change when cells hide */
-      transition: opacity 0.3s ease-out;
     }
 
     .selected {
@@ -67,18 +50,14 @@
       color: #000;
     }
 
-    .word-column {
+    #wordList {
+      margin-top: 20px;
+      font-size: 18px;
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 10px;
-      min-width: 120px;
-    }
-
-    .word-column span {
-      font-size: 24px;
-      padding: 5px 0;
-      white-space: nowrap;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      font-weight: bold;
     }
 
     .done {
@@ -86,33 +65,14 @@
       color: gray;
     }
 
-    /* Flying letter styles - reused and modified for end game */
+    /* Flying letter styles */
     .flying-letter {
       position: absolute;
-      font-size: 24px; /* Default size, can be overridden */
+      font-size: 24px;
       font-weight: bold;
       animation: fly 2s ease-out forwards;
       pointer-events: none;
       z-index: 1000;
-    }
-
-    /* Congratulation text styles */
-    #congrats-container {
-      font-size: 80px;
-      font-weight: bold;
-      color: #fff;
-      text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
-      display: flex;
-      flex-wrap: wrap; /* Allow "Congratulations!!" to wrap if needed */
-      justify-content: center;
-      margin-top: 50px; /* Add some space from the top if body is flex-start */
-    }
-
-    #congrats-container span {
-      opacity: 0;
-      transform: scale(0);
-      transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Base transition */
-      display: inline-block; /* Essential for transform on spaces and individual letters */
     }
 
     @keyframes fly {
@@ -129,22 +89,14 @@
 </head>
 <body>
 
-<h1>🧩 Word Search Game BCIS Year 1B 🧩</h1>
-
-<div id="main-game-container">
-  <div id="leftWordList" class="word-column"></div>
-  <div id="grid"></div>
-  <div id="rightWordList" class="word-column"></div>
-</div>
-
-<audio id="yaySound" src="https://www.soundjay.com/buttons/sounds/button-2.mp3" preload="auto"></audio>
+<h1>🧩 Word Search Game 🧩</h1>
+<div id="grid"></div>
+<div id="wordList"></div>
 
 <script>
-  const words = ["Geo", "Yul", "Allen", "Eden", "Thomas", "Arkadia", "Tamar", "Maia", "Jader", "Blue" "Lucas", "Kiwi", "Kevin", "Phim" "Rionach", "Evan", "Pablo", "Bingxu", "Enzo", "Yi", "Khaohom", "Mischa", "Rinya", "Taotao", "Rowan", "Alex", "Mingi", "Nari"];
+  const words = ["Alana", "Nicole", "Eddie", "Aaron", "Jayden", "Ai", "Noma", "Yoogeun", "Halle", "Aliz", "Eric", "Chloe", "Xender", "Wadi", "Mango", "Leo"];
   const gridSize = 12;
   const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(""));
-
-  const yaySound = document.getElementById("yaySound");
 
   function canPlaceWord(word, row, col, direction) {
     const len = word.length;
@@ -244,19 +196,32 @@
     updateWordList();
   }
 
+  // --- MODIFIED handleClick FUNCTION ---
   function handleClick(cell) {
+    // If the cell is already part of a found word, we should still allow it to be selected
+    // but we don't want to remove its "found" class by just clicking it.
+    // The key is that it *can* be part of a new selection.
+
     const isCurrentlySelected = selectedCells.includes(cell);
 
     if (isCurrentlySelected) {
+      // If clicked again, remove it from selection and its 'selected' class
       cell.classList.remove("selected");
       selectedCells = selectedCells.filter(c => c !== cell);
     } else {
+      // If it's not currently selected, add it.
+      // Check if the cell is already part of a found word.
+      // If it is, we still add it to selectedCells, but we don't remove 'found'.
       if (!cell.classList.contains("found")) {
          cell.classList.add("selected");
+      } else {
+         // If it's a found cell, just add it to selectedCells without adding 'selected' class
+         // This ensures it's part of the sequence for checking, but keeps its 'found' look
       }
       selectedCells.push(cell);
     }
 
+    // Always re-sort selected cells to ensure consistency for word checking
     selectedCells.sort((a, b) => {
         const rowA = parseInt(a.dataset.row);
         const colA = parseInt(a.dataset.col);
@@ -269,32 +234,33 @@
     const currentWord = selectedCells.map(c => c.textContent).join('');
     const reversedCurrentWord = currentWord.split('').reverse().join('');
 
+    // Find if the current selection matches any word (or its reverse) that hasn't been found yet
     const potentialMatch = words.find(w =>
         (w.toUpperCase() === currentWord || w.toUpperCase() === reversedCurrentWord) &&
-        !foundWords.includes(w)
+        !foundWords.includes(w) // Ensure it's not already found
     );
 
+    // If a potential match is found AND the cells form a straight line
     if (potentialMatch && areCellsInStraightLine(selectedCells)) {
         selectedCells.forEach(c => {
-            c.classList.remove("selected");
-            c.classList.add("found");
+            c.classList.remove("selected"); // Remove selected class if any
+            c.classList.add("found");      // Add found class
         });
 
-        yaySound.currentTime = 0;
-        yaySound.play();
+        launchFlyingLetters(selectedCells); // 🎉 fly effect
 
-        launchFlyingLetters(selectedCells);
-
-        foundWords.push(potentialMatch);
-        selectedCells = [];
+        foundWords.push(potentialMatch); // Add the actual word (case-sensitive) to found list
+        selectedCells = []; // Reset selection
 
         updateWordList();
 
         if (foundWords.length === words.length) {
-            // All words found, initiate end game sequence
-            setTimeout(() => handleGameEnd(), 500); // Give a slight pause after last word animation
+            setTimeout(() => alert("🎉 You found all the words! 🎉"), 100);
         }
     }
+    // If the selected cells form a sequence that is not a word or not a straight line,
+    // or if the length of selected cells exceeds the longest word in the list,
+    // consider clearing the selection. This prevents very long random selections.
     const longestWordLength = Math.max(...words.map(w => w.length));
     if (selectedCells.length > 1 &&
         (selectedCells.length > longestWordLength || !areCellsInStraightLine(selectedCells))) {
@@ -302,33 +268,19 @@
         selectedCells = [];
     }
   }
+  // --- END MODIFIED handleClick FUNCTION ---
 
 
   function updateWordList() {
-    const leftListContainer = document.getElementById("leftWordList");
-    const rightListContainer = document.getElementById("rightWordList");
-    leftListContainer.innerHTML = "";
-    rightListContainer.innerHTML = "";
-
-    const middleIndex = Math.ceil(words.length / 2);
-
-    for (let i = 0; i < middleIndex; i++) {
-        const word = words[i];
-        const span = document.createElement("span");
-        span.textContent = word;
-        if (foundWords.includes(word)) span.classList.add("done");
-        leftListContainer.appendChild(span);
-    }
-
-    for (let i = middleIndex; i < words.length; i++) {
-        const word = words[i];
-        const span = document.createElement("span");
-        span.textContent = word;
-        if (foundWords.includes(word)) span.classList.add("done");
-        rightListContainer.appendChild(span);
-    }
+    const list = document.getElementById("wordList");
+    list.innerHTML = "";
+    words.forEach(word => {
+      const span = document.createElement("span");
+      span.textContent = word;
+      if (foundWords.includes(word)) span.classList.add("done");
+      list.appendChild(span);
+    });
   }
-
 
   function launchFlyingLetters(cells) {
     cells.forEach(cell => {
@@ -338,12 +290,8 @@
       flying.textContent = letter;
 
       const rect = cell.getBoundingClientRect();
-      const scrollX = window.scrollX || document.documentElement.scrollLeft;
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
-
-      flying.style.left = (rect.left + scrollX) + "px";
-      flying.style.top = (rect.top + scrollY) + "px";
-      flying.style.color = getComputedStyle(cell).color; // Keep original color
+      flying.style.left = rect.left + "px";
+      flying.style.top = rect.top + "px";
 
       const dx = Math.random() * 400 - 200;
       const dy = Math.random() * 300 - 150;
@@ -362,6 +310,7 @@
     const firstRow = parseInt(cells[0].dataset.row);
     const firstCol = parseInt(cells[0].dataset.col);
 
+    // Determine direction based on the first two cells (if available)
     let rowDiff = 0;
     let colDiff = 0;
 
@@ -371,16 +320,21 @@
         rowDiff = secondRow - firstRow;
         colDiff = secondCol - firstCol;
 
+        // Ensure movement is exactly one step for straight lines
         if (Math.abs(rowDiff) > 1 || Math.abs(colDiff) > 1) return false;
+        // Disallow non-straight moves (e.g., L-shape)
         if (rowDiff !== 0 && colDiff !== 0 && Math.abs(rowDiff) !== Math.abs(colDiff)) return false;
     }
 
+
+    // Validate the rest of the cells based on the determined direction
     for (let i = 1; i < cells.length; i++) {
         const currentRow = parseInt(cells[i].dataset.row);
         const currentCol = parseInt(cells[i].dataset.col);
         const prevRow = parseInt(cells[i-1].dataset.row);
         const prevCol = parseInt(cells[i-1].dataset.col);
 
+        // Check for consecutiveness
         if (currentRow === prevRow + rowDiff && currentCol === prevCol + colDiff) {
             continue;
         } else {
@@ -388,92 +342,6 @@
         }
     }
     return true;
-  }
-
-  // New function to handle the end of the game
-  function handleGameEnd() {
-    const allGridCells = document.querySelectorAll('#grid .cell');
-    const delayBetweenLetters = 10; // milliseconds
-    const animationDuration = 2000; // milliseconds, matches CSS animation duration
-
-    // Phase 1: Make all grid letters fly away
-    allGridCells.forEach((cell, index) => {
-        // Only animate visible letters
-        if (cell.textContent.trim() !== '') {
-            setTimeout(() => {
-                const letter = cell.textContent;
-                const flying = document.createElement("div");
-                flying.className = "flying-letter";
-                flying.textContent = letter;
-
-                const rect = cell.getBoundingClientRect();
-                const scrollX = window.scrollX || document.documentElement.scrollLeft;
-                const scrollY = window.scrollY || document.documentElement.scrollTop;
-
-                flying.style.left = (rect.left + scrollX) + "px";
-                flying.style.top = (rect.top + scrollY) + "px";
-                flying.style.color = getComputedStyle(cell).color;
-                flying.style.fontSize = getComputedStyle(cell).fontSize; // Maintain cell's font size
-
-                // Make them fly off-screen more randomly
-                const dx = (Math.random() - 0.5) * window.innerWidth * 2;
-                const dy = (Math.random() - 0.5) * window.innerHeight * 2;
-                flying.style.setProperty('--dx', `${dx}px`);
-                flying.style.setProperty('--dy', `${dy}px`);
-                flying.style.animationDuration = `${animationDuration / 1000}s`;
-                flying.style.opacity = 1; // Start opaque
-
-                document.body.appendChild(flying);
-
-                // Hide the original cell immediately for a cleaner transition
-                cell.style.opacity = '0';
-
-                setTimeout(() => flying.remove(), animationDuration);
-            }, index * delayBetweenLetters);
-        } else {
-            // If cell is empty, just hide it
-            setTimeout(() => {
-                cell.style.opacity = '0';
-            }, index * delayBetweenLetters);
-        }
-    });
-
-    // Calculate when the "Congratulations!!" should appear after all letters have flown away
-    const totalFlyAwayTime = (allGridCells.length * delayBetweenLetters) + animationDuration + 200; // Add a small buffer
-
-    setTimeout(() => {
-        // Clear all existing game content
-        document.body.innerHTML = '';
-        document.body.style.display = 'flex';
-        document.body.style.flexDirection = 'column';
-        document.body.style.justifyContent = 'center'; /* Center for the final message */
-        document.body.style.alignItems = 'center';
-        document.body.style.padding = '0'; /* Reset padding */
-
-        // Create the "Congratulations!!" message
-        const congratulationsText = "Congratulations! You are the CHOSEN KNIGHT";
-        const congratsContainer = document.createElement('div');
-        congratsContainer.id = 'congrats-container';
-        document.body.appendChild(congratsContainer);
-
-        // Animate each letter of "Congratulations!!"
-        congratulationsText.split('').forEach((char, index) => {
-            const span = document.createElement('span');
-            span.textContent = char === ' ' ? '\u00A0' : char; // Use non-breaking space for actual spaces
-            congratsContainer.appendChild(span);
-
-            // Apply animation delay for each letter
-            const letterDelay = index * 80; // milliseconds delay per letter
-            span.style.transitionDelay = `${letterDelay / 1000}s`;
-
-            // Trigger the animation by changing properties after a slight timeout
-            setTimeout(() => {
-                span.style.opacity = '1';
-                span.style.transform = 'scale(1)';
-            }, 50); // Small initial delay to ensure CSS transitions are active
-        });
-
-    }, totalFlyAwayTime);
   }
 
   // Initialize the game
